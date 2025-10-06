@@ -9,6 +9,7 @@ import pystray
 from pystray import MenuItem as item
 from PIL import Image as PILImage
 import sys
+import win32api
 
 class ScreenshotApp:
     def __init__(self, root):
@@ -31,7 +32,8 @@ class ScreenshotApp:
             'refresh': '#89dceb',  # Cyan
             'rename': '#f5c2e7',  # Pink
             'delete': '#eba0ac',  # Maroon
-            'folder': '#fab387'  # Orange
+            'folder': '#fab387',  # Orange
+            'print': '#b4befe'  # Lavender
         }
         
         # Apply theme to root
@@ -64,6 +66,7 @@ class ScreenshotApp:
         
         # Handle window close event
         self.root.protocol("WM_DELETE_WINDOW", self.minimize_to_tray)
+        self.root.bind("<Control-p>", lambda event: self.print_file())
         
     def create_screenshot_folder(self):
         """Create screenshot folder if it doesn't exist"""
@@ -192,6 +195,7 @@ class ScreenshotApp:
         button_frame.columnconfigure(1, weight=1)
         button_frame.columnconfigure(2, weight=1)
         button_frame.columnconfigure(3, weight=1)
+        button_frame.columnconfigure(4, weight=1)
         
         # Create custom styled buttons with icons
         btn_style = {
@@ -230,6 +234,13 @@ class ScreenshotApp:
                               bg=self.colors['folder'], fg='#000000',
                               **btn_style)
         folder_btn.grid(row=0, column=3, padx=3, sticky=(tk.W, tk.E), ipady=8)
+
+        # Print button with icon
+        print_btn = tk.Button(button_frame, text="🖨️ Print", 
+                             command=self.print_file,
+                             bg=self.colors['print'], fg='#000000',
+                             **btn_style)
+        print_btn.grid(row=0, column=4, padx=3, sticky=(tk.W, tk.E), ipady=8)
         
         # Create horizontal paned window
         paned_frame = tk.Frame(main_frame, bg=self.colors['bg'])
@@ -492,6 +503,30 @@ class ScreenshotApp:
             os.startfile(self.screenshot_folder)
         except Exception as e:
             messagebox.showerror("Error", f"Failed to open folder: {str(e)}")
+
+    def print_file(self):
+        """Print the selected screenshot to the default printer"""
+        selection = self.file_listbox.curselection()
+        if not selection:
+            messagebox.showwarning("Warning", "Please select a file to print")
+            return
+
+        filename = self.file_listbox.get(selection[0])
+        filepath = os.path.join(self.screenshot_folder, filename)
+
+        try:
+            win32api.ShellExecute(
+                0,
+                "print",
+                filepath,
+                None,
+                ".",
+                1
+            )
+            self.status_var.set(f"Sent to printer: {filename}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to print file: {str(e)}")
+            self.status_var.set("Error printing file")
             
     def create_camera_icon(self):
         """Create a camera icon for system tray"""
