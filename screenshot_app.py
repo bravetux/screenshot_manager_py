@@ -244,7 +244,8 @@ class OcrResultWindow(tk.Toplevel):
         close_btn = tk.Button(self, text="Close", command=self.destroy,
                               bg=colors['delete'], fg='#000000',
                               font=('Consolas', 12, 'bold'),
-                              relief=tk.FLAT, bd=0, cursor='hand2')
+                              relief=tk.FLAT, bd=0, cursor='hand2',
+                              activebackground=colors['button_active'])
         close_btn.pack(fill=tk.X, padx=10, pady=(0, 10), ipady=5)
 
 
