@@ -305,7 +305,8 @@ class ScreenshotApp:
         # Handle window close event
         self.root.protocol("WM_DELETE_WINDOW", self.minimize_to_tray)
         self.root.bind("<Control-p>", lambda event: self.print_file())
-        
+        self.root.bind("<Control-Shift-O>", lambda event: self.ocr_image())
+
     def create_screenshot_folder(self):
         """Create screenshot folder if it doesn't exist"""
         if not os.path.exists(self.screenshot_folder):
