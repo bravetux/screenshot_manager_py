@@ -11,6 +11,192 @@ from PIL import Image as PILImage
 import sys
 import win32api
 
+class CropWindow(tk.Toplevel):
+    def __init__(self, master, image_path, colors, refresh_callback, select_callback):
+        super().__init__(master)
+        self.title("Crop Image")
+        self.geometry("800x600")
+        self.grab_set()  # Make it modal
+        self.transient(master)
+
+        self.image_path = image_path
+        self.colors = colors
+        self.refresh_callback = refresh_callback
+        self.select_callback = select_callback
+
+        self.original_image = Image.open(image_path)
+        self.display_image = self.original_image.copy()
+        self.tk_image = None
+
+        self.start_x = None
+        self.start_y = None
+        self.current_rect = None
+
+        self.configure(bg=self.colors['bg'])
+
+        self.setup_gui()
+        self.bind('<Configure>', self.on_resize)
+
+    def setup_gui(self):
+        # Canvas for image and cropping rectangle
+        self.canvas = tk.Canvas(self, bg=self.colors['canvas_bg'], cursor="cross")
+        self.canvas.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        self.canvas.bind("<ButtonPress-1>", self.on_mouse_press)
+        self.canvas.bind("<B1-Motion>", self.on_mouse_move)
+        self.canvas.bind("<ButtonRelease-1>", self.on_mouse_release)
+
+        # Buttons frame
+        button_frame = tk.Frame(self, bg=self.colors['bg'])
+        button_frame.pack(fill=tk.X, pady=5)
+
+        btn_style = {
+            'font': ('Consolas', 12, 'bold'),
+            'relief': tk.FLAT,
+            'bd': 0,
+            'cursor': 'hand2',
+            'activebackground': self.colors['button_active']
+        }
+
+        confirm_btn = tk.Button(button_frame, text="✅ Confirm Crop",
+                                command=self.confirm_crop,
+                                bg=self.colors['success'], fg='#000000',
+                                **btn_style)
+        confirm_btn.pack(side=tk.LEFT, padx=5, expand=True, fill=tk.X, ipady=5)
+
+        cancel_btn = tk.Button(button_frame, text="❌ Cancel",
+                               command=self.destroy,
+                               bg=self.colors['delete'], fg='#000000',
+                               **btn_style)
+        cancel_btn.pack(side=tk.RIGHT, padx=5, expand=True, fill=tk.X, ipady=5)
+
+        self.show_image()
+
+    def show_image(self):
+        self.canvas.delete("all")
+        canvas_width = self.canvas.winfo_width()
+        canvas_height = self.canvas.winfo_height()
+
+        if canvas_width == 0 or canvas_height == 0:
+            # If canvas not yet rendered, schedule a retry
+            self.after(10, self.show_image)
+            return
+
+        img_width, img_height = self.original_image.size
+        scale = min(canvas_width / img_width, canvas_height / img_height, 1.0)
+
+        new_width = int(img_width * scale)
+        new_height = int(img_height * scale)
+
+        self.display_image = self.original_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        self.tk_image = ImageTk.PhotoImage(self.display_image)
+
+        self.canvas.create_image(canvas_width / 2, canvas_height / 2, image=self.tk_image, anchor=tk.CENTER)
+
+    def on_resize(self, event):
+        self.show_image()
+        if self.current_rect:
+            self.canvas.delete(self.current_rect)
+            self.current_rect = None
+
+    def on_mouse_press(self, event):
+        self.start_x = self.canvas.canvasx(event.x)
+        self.start_y = self.canvas.canvasy(event.y)
+
+        if self.current_rect:
+            self.canvas.delete(self.current_rect)
+        self.current_rect = self.canvas.create_rectangle(self.start_x, self.start_y, self.start_x, self.start_y,
+                                                        outline=self.colors['accent'], width=2)
+
+    def on_mouse_move(self, event):
+        if self.start_x is not None and self.start_y is not None:
+            cur_x = self.canvas.canvasx(event.x)
+            cur_y = self.canvas.canvasy(event.y)
+            self.canvas.coords(self.current_rect, self.start_x, self.start_y, cur_x, cur_y)
+
+    def on_mouse_release(self, event):
+        if self.start_x is not None and self.start_y is not None:
+            end_x = self.canvas.canvasx(event.x)
+            end_y = self.canvas.canvasy(event.y)
+
+            # Get image coordinates on canvas
+            img_coords = self.canvas.coords(self.tk_image_id)
+            img_x1 = img_coords[0] - self.tk_image.width() / 2
+            img_y1 = img_coords[1] - self.tk_image.height() / 2
+            img_x2 = img_coords[0] + self.tk_image.width() / 2
+            img_y2 = img_coords[1] + self.tk_image.height() / 2
+
+            # Clamp selection to image boundaries
+            self.crop_x1 = max(img_x1, min(self.start_x, end_x))
+            self.crop_y1 = max(img_y1, min(self.start_y, end_y))
+            self.crop_x2 = min(img_x2, max(self.start_x, end_x))
+            self.crop_y2 = min(img_y2, max(self.start_y, end_y))
+
+            self.canvas.coords(self.current_rect, self.crop_x1, self.crop_y1, self.crop_x2, self.crop_y2)
+
+            self.start_x = None
+            self.start_y = None
+
+    def confirm_crop(self):
+        if not hasattr(self, 'crop_x1') or self.crop_x1 is None:
+            messagebox.showwarning("Warning", "Please select a crop area first.")
+            return
+
+        # Convert canvas coordinates to original image coordinates
+        img_width, img_height = self.original_image.size
+        canvas_width = self.canvas.winfo_width()
+        canvas_height = self.canvas.winfo_height()
+
+        scale_x = img_width / self.display_image.width
+        scale_y = img_height / self.display_image.height
+
+        # Calculate offset of the displayed image on the canvas
+        img_on_canvas_width = self.display_image.width
+        img_on_canvas_height = self.display_image.height
+        offset_x = (canvas_width - img_on_canvas_width) / 2
+        offset_y = (canvas_height - img_on_canvas_height) / 2
+
+        # Adjust crop coordinates relative to the displayed image and then scale
+        x1 = int((self.crop_x1 - offset_x) * scale_x)
+        y1 = int((self.crop_y1 - offset_y) * scale_y)
+        x2 = int((self.crop_x2 - offset_x) * scale_x)
+        y2 = int((self.crop_y2 - offset_y) * scale_y)
+
+        # Ensure coordinates are within image bounds
+        x1 = max(0, x1)
+        y1 = max(0, y1)
+        x2 = min(img_width, x2)
+        y2 = min(img_height, y2)
+
+        if x2 <= x1 or y2 <= y1:
+            messagebox.showwarning("Warning", "Invalid crop area selected.")
+            return
+
+        cropped_image = self.original_image.crop((x1, y1, x2, y2))
+
+        # Ask user to save or overwrite
+        save_option = messagebox.askyesnocancel("Save Cropped Image",
+                                                "Do you want to overwrite the original image?\n" \
+                                                "No will save as a new file.")
+
+        if save_option is True:  # Overwrite
+            cropped_image.save(self.image_path)
+            self.refresh_callback()
+            self.select_callback(os.path.basename(self.image_path))
+            messagebox.showinfo("Success", "Image cropped and overwritten.")
+            self.destroy()
+        elif save_option is False:  # Save as new file
+            timestamp = datetime.now().strftime("%d%m%Y_%H%M%S")
+            filename_base, ext = os.path.splitext(os.path.basename(self.image_path))
+            new_filename = f"{filename_base}_cropped_{timestamp}{ext}"
+            new_filepath = os.path.join(os.path.dirname(self.image_path), new_filename)
+            cropped_image.save(new_filepath)
+            self.refresh_callback()
+            self.select_callback(new_filename)
+            messagebox.showinfo("Success", f"Image cropped and saved as {new_filename}.")
+            self.destroy()
+        # If None (cancel), do nothing
+
+
 class ScreenshotApp:
     def __init__(self, root):
         self.root = root
@@ -241,6 +427,20 @@ class ScreenshotApp:
                              bg=self.colors['print'], fg='#000000',
                              **btn_style)
         print_btn.grid(row=0, column=4, padx=3, sticky=(tk.W, tk.E), ipady=8)
+        
+        # Crop button
+        crop_btn = tk.Button(button_frame, text="✂️ Crop",
+                            command=self.crop_image,
+                            bg=self.colors['accent'], fg='#000000',
+                            **btn_style)
+        crop_btn.grid(row=0, column=5, padx=3, sticky=(tk.W, tk.E), ipady=8)
+
+        # Copy button
+        copy_btn = tk.Button(button_frame, text="📋 Copy",
+                            command=self.copy_image,
+                            bg=self.colors['success'], fg='#000000',
+                            **btn_style)
+        copy_btn.grid(row=0, column=6, padx=3, sticky=(tk.W, tk.E), ipady=8)
         
         # Create horizontal paned window
         paned_frame = tk.Frame(main_frame, bg=self.colors['bg'])
@@ -527,6 +727,52 @@ class ScreenshotApp:
         except Exception as e:
             messagebox.showerror("Error", f"Failed to print file: {str(e)}")
             self.status_var.set("Error printing file")
+
+    def crop_image(self):
+        """Crop the selected image"""
+        selection = self.file_listbox.curselection()
+        if not selection:
+            messagebox.showwarning("Warning", "Please select a file to crop")
+            return
+
+        filename = self.file_listbox.get(selection[0])
+        filepath = os.path.join(self.screenshot_folder, filename)
+
+        try:
+            CropWindow(self.root, filepath, self.colors, self.refresh_file_list, self.select_file_by_name)
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to open crop window: {str(e)}")
+
+    def copy_image(self):
+        """Copy the selected image to the clipboard"""
+        selection = self.file_listbox.curselection()
+        if not selection:
+            messagebox.showwarning("Warning", "Please select a file to copy")
+            return
+
+        filename = self.file_listbox.get(selection[0])
+        filepath = os.path.join(self.screenshot_folder, filename)
+
+        try:
+            from io import BytesIO
+            import win32clipboard
+
+            image = Image.open(filepath)
+            output = BytesIO()
+            image.convert("RGB").save(output, "BMP")
+            data = output.getvalue()[14:]
+            output.close()
+
+            win32clipboard.OpenClipboard()
+            win32clipboard.EmptyClipboard()
+            win32clipboard.SetClipboardData(win32clipboard.CF_DIB, data)
+            win32clipboard.CloseClipboard()
+
+            self.status_var.set(f"Copied to clipboard: {filename}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to copy image: {str(e)}")
+            self.status_var.set("Error copying image")
+
             
     def create_camera_icon(self):
         """Create a camera icon for system tray"""
