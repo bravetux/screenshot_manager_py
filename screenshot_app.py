@@ -868,9 +868,11 @@ class ScreenshotApp:
                 return
 
             win32clipboard.OpenClipboard()
-            win32clipboard.EmptyClipboard()
-            win32clipboard.SetClipboardData(win32clipboard.CF_UNICODETEXT, text)
-            win32clipboard.CloseClipboard()
+            try:
+                win32clipboard.EmptyClipboard()
+                win32clipboard.SetClipboardData(win32clipboard.CF_UNICODETEXT, text)
+            finally:
+                win32clipboard.CloseClipboard()
 
             OcrResultWindow(self.root, text, self.colors)
             self.status_var.set(f"OCR complete: {filename}")
