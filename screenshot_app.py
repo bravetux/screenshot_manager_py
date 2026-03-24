@@ -1,3 +1,20 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+===========================================================
+    Project Name : Screen Shot Manager
+    File Name    : screenshot_app.py
+    Author       : Vignesh Kumar B
+    Created On   : 2025-10-6
+    Description  : Screen Shot Manager using TKinter
+===========================================================
+"""
+
+__author__ = "Vignesh Kumar B"
+__version__ = "1.0.0"
+__license__ = "MIT"  # or any license you prefer
+
+
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
 from PIL import ImageGrab, Image, ImageTk, ImageDraw
