@@ -4,7 +4,9 @@ A Python-based screenshot manager with Tkinter GUI that captures screenshots on 
 
 ## Features
 
-- **Global Hotkey**: Press Ctrl+PrintScreen to capture the entire screen
+- **Global Hotkey**: 
+  - Press **Ctrl+PrintScreen** to capture the entire screen
+  - Press **Ctrl+Shift+O** to perform OCR on the selected screenshot
 - **Automatic Storage**: Screenshots saved to `C:\Screenshot` folder
 - **Filename Format**: `ss_ddmmyyyy_hhmmss.png` (e.g., ss_04102025_143025.png)
 - **File Management**: 
@@ -13,6 +15,10 @@ A Python-based screenshot manager with Tkinter GUI that captures screenshots on 
   - Rename screenshots
   - Delete screenshots
   - Open folder in File Explorer
+- **Optical Character Recognition (OCR)**:
+  - Extract text from any captured screenshot
+  - View extracted text in a scrollable dialog
+  - Extracted text is automatically copied to the clipboard
 - **System Tray Integration**: 
   - Minimize to system tray
   - Restore from system tray
@@ -65,13 +71,17 @@ python screenshot_app.py
 
 - Windows OS (uses `os.startfile` for opening folders)
 - Python 3.8+
+- [Tesseract OCR](https://github.com/UB-Mannheim/tesseract/wiki) (Must be installed at `C:\Program Files\Tesseract-OCR\tesseract.exe`)
 - Pillow (PIL)
 - keyboard
 - pystray
+- pytesseract
+- pywin32
 
 ## Notes
 
 - The application needs to run with administrator privileges for the global hotkey to work properly
+- OCR requires Tesseract to be installed at the default path
 - Screenshots are saved in PNG format
 - The preview automatically scales images to fit the preview pane
 
@@ -94,6 +104,7 @@ This will create a portable `ScreenshotManager.exe` in the `dist` folder.
 ### Distribution
 
 The executable can be distributed to any Windows machine without Python installed.
+Note: Tesseract must still be installed on the target machine for OCR features to work.
 See [BUILD_INSTRUCTIONS.md](BUILD_INSTRUCTIONS.md) for detailed build options.
 
 ## Troubleshooting
@@ -104,6 +115,13 @@ If the Ctrl+PrintScreen hotkey doesn't work:
 - Run the application as Administrator
 - Check if another application is blocking the hotkey
 - Ensure the keyboard library is properly installed
+
+### OCR Issues
+
+If the OCR button doesn't work:
+- Ensure Tesseract OCR is installed at `C:\Program Files\Tesseract-OCR\tesseract.exe`
+- Verify that the image contains readable text
+- Check if `pytesseract` and `pywin32` are installed in your environment
 
 ### Executable Mode
 
