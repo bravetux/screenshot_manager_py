@@ -214,6 +214,40 @@ class CropWindow(tk.Toplevel):
         # If None (cancel), do nothing
 
 
+class OcrResultWindow(tk.Toplevel):
+    def __init__(self, master, text, colors):
+        super().__init__(master)
+        self.title("OCR Result")
+        self.geometry("600x400")
+        self.grab_set()
+        self.transient(master)
+        self.configure(bg=colors['bg'])
+
+        # Scrollable text area
+        text_frame = tk.Frame(self, bg=colors['bg'])
+        text_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        scrollbar = tk.Scrollbar(text_frame)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        text_widget = tk.Text(text_frame, wrap=tk.WORD,
+                              yscrollcommand=scrollbar.set,
+                              bg=colors['canvas_bg'], fg=colors['fg'],
+                              font=('Consolas', 11))
+        text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.config(command=text_widget.yview)
+
+        text_widget.insert(tk.END, text)
+        text_widget.config(state=tk.DISABLED)
+
+        # Close button
+        close_btn = tk.Button(self, text="Close", command=self.destroy,
+                              bg=colors['delete'], fg='#000000',
+                              font=('Consolas', 12, 'bold'),
+                              relief=tk.FLAT, bd=0, cursor='hand2')
+        close_btn.pack(fill=tk.X, padx=10, pady=(0, 10), ipady=5)
+
+
 class ScreenshotApp:
     def __init__(self, root):
         self.root = root
