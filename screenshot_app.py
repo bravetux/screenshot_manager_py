@@ -434,6 +434,9 @@ class ScreenshotApp:
         button_frame.columnconfigure(2, weight=1)
         button_frame.columnconfigure(3, weight=1)
         button_frame.columnconfigure(4, weight=1)
+        button_frame.columnconfigure(5, weight=1)
+        button_frame.columnconfigure(6, weight=1)
+        button_frame.columnconfigure(7, weight=1)
         
         # Create custom styled buttons with icons
         btn_style = {
@@ -493,7 +496,14 @@ class ScreenshotApp:
                             bg=self.colors['success'], fg='#000000',
                             **btn_style)
         copy_btn.grid(row=0, column=6, padx=3, sticky=(tk.W, tk.E), ipady=8)
-        
+
+        # OCR button — uses same color as Print button (intentional per spec)
+        ocr_btn = tk.Button(button_frame, text="🔍 OCR",
+                            command=self.ocr_image,
+                            bg=self.colors['print'], fg='#000000',
+                            **btn_style)
+        ocr_btn.grid(row=0, column=7, padx=3, sticky=(tk.W, tk.E), ipady=8)
+
         # Create horizontal paned window
         paned_frame = tk.Frame(main_frame, bg=self.colors['bg'])
         paned_frame.grid(row=3, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
