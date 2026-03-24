@@ -825,7 +825,53 @@ class ScreenshotApp:
             messagebox.showerror("Error", f"Failed to copy image: {str(e)}")
             self.status_var.set("Error copying image")
 
-            
+    def ocr_image(self):
+        """Extract text from the selected image using OCR"""
+        # Import pytesseract first in its own block so it is bound before
+        # TesseractNotFoundError is referenced in the except clause below.
+        try:
+            import pytesseract
+        except ImportError:
+            messagebox.showerror("Missing Dependency",
+                                 "pytesseract is not installed.\nRun: pip install pytesseract==0.3.13")
+            return
+
+        pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+
+        selection = self.file_listbox.curselection()
+        if not selection:
+            messagebox.showwarning("Warning", "Please select a file to OCR")
+            return
+
+        filename = self.file_listbox.get(selection[0])
+        filepath = os.path.join(self.screenshot_folder, filename)
+
+        try:
+            import win32clipboard
+
+            image = Image.open(filepath)
+            text = pytesseract.image_to_string(image).strip()
+
+            if not text:
+                messagebox.showwarning("No Text Found", "No text could be extracted from the image.")
+                return
+
+            win32clipboard.OpenClipboard()
+            win32clipboard.EmptyClipboard()
+            win32clipboard.SetClipboardData(win32clipboard.CF_UNICODETEXT, text)
+            win32clipboard.CloseClipboard()
+
+            OcrResultWindow(self.root, text, self.colors)
+            self.status_var.set(f"OCR complete: {filename}")
+
+        except pytesseract.pytesseract.TesseractNotFoundError:
+            messagebox.showerror("Tesseract Not Found",
+                                 "Tesseract OCR is not installed.\n"
+                                 "Download it from: https://github.com/UB-Mannheim/tesseract/wiki")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to run OCR: {str(e)}")
+            self.status_var.set("Error running OCR")
+
     def create_camera_icon(self):
         """Create a camera icon for system tray"""
         # Create a 64x64 image with camera icon
